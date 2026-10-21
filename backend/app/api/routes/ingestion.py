@@ -5,6 +5,9 @@ from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
 from app.services.job_ingestion import ingest_greenhouse_board
 
+from app.services.lever import fetch_lever_jobs
+from app.services.job_persistence import save_jobs
+
 router = APIRouter(prefix="/ingestion", tags=["Ingestion"])
 
 
@@ -30,3 +33,12 @@ def ingest_greenhouse(
             status_code=502,
             detail="Greenhouse ingestion failed. Check the server logs.",
         ) from exc
+
+
+@router.post("/lever/{site}")
+def ingest_lever_jobs(site: str):
+    with SessionLocal() as session:
+        jobs = fetch_lever_jobs(site)
+        result = save_jobs(session, jobs)
+
+    return result
