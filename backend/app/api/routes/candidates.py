@@ -3,14 +3,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
 
-
-from fastapi import HTTPException
-from pydantic import BaseModel
 from app.db.session import SessionLocal
 from app.models.candidate import Candidate
 from app.models.job import Job
 from app.services.job_matching import rank_jobs_for_candidate
 from app.services.skill_extractor import extract_skills
+
 
 router = APIRouter(prefix="/candidates", tags=["Candidates"])
 
@@ -125,6 +123,28 @@ class CandidateSkillsUpdate(BaseModel):
     skills: list[str]
 
 
+
+class CandidateProfileUpdate(BaseModel):
+    full_name: str | None = Field(default=None, min_length=1, max_length=150)
+    email: EmailStr | None = None
+    phone: str | None = Field(default=None, max_length=30)
+    location: str | None = Field(default=None, max_length=200)
+    target_role: str | None = Field(default=None, max_length=150)
+
+    preferred_locations: list[str] | None = None
+    employment_types: list[str] | None = None
+    remote_preference: str | None = Field(default=None, max_length=30)
+
+    skills: list[str] | None = None
+    years_experience: float | None = Field(default=None, ge=0, le=80)
+    professional_summary: str | None = None
+    education: list[dict] | None = None
+    experience: list[dict] | None = None
+    projects: list[dict] | None = None
+    certifications: list[str] | None = None
+
+
+
 @router.patch("/{candidate_id}/skills")
 def update_candidate_skills(
     candidate_id: int,
@@ -147,4 +167,81 @@ def update_candidate_skills(
         "id": candidate.id,
         "target_role": candidate.target_role,
         "skills": candidate.skills,
+    }
+
+
+
+@router.patch("/{candidate_id}/profile")
+def update_candidate_profile(
+    candidate_id: int,
+    payload: CandidateProfileUpdate,
+    session: Session = Depends(get_db),
+):
+    candidate = session.get(Candidate, candidate_id)
+
+    if candidate is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Candidate not found",
+        )
+
+    updates = payload.model_dump(exclude_unset=True)
+
+    if "email" in updates and updates["email"] is not None:
+        updates["email"] = str(updates["email"]).strip().lower()
+
+        existing = (
+            session.query(Candidate)
+            .filter(
+                Candidate.email == updates["email"],
+                Candidate.id != candidate_id,
+            )
+            .first()
+        )
+
+        if existing:
+            raise HTTPException(
+                status_code=409,
+                detail="A candidate with this email already exists",
+            )
+
+    if "full_name" in updates and updates["full_name"] is not None:
+        updates["full_name"] = updates["full_name"].strip()
+
+    if "skills" in updates and updates["skills"] is not None:
+        normalized_skills = set()
+
+        for skill in updates["skills"]:
+            normalized_skills.update(extract_skills(skill.strip()))
+
+        updates["skills"] = sorted(normalized_skills)
+
+    for field, value in updates.items():
+        setattr(candidate, field, value)
+
+    try:
+        session.commit()
+        session.refresh(candidate)
+    except Exception:
+        session.rollback()
+        raise
+
+    return {
+        "id": candidate.id,
+        "full_name": candidate.full_name,
+        "email": candidate.email,
+        "phone": candidate.phone,
+        "location": candidate.location,
+        "target_role": candidate.target_role,
+        "preferred_locations": candidate.preferred_locations,
+        "employment_types": candidate.employment_types,
+        "remote_preference": candidate.remote_preference,
+        "skills": candidate.skills,
+        "years_experience": candidate.years_experience,
+        "professional_summary": candidate.professional_summary,
+        "education": candidate.education,
+        "experience": candidate.experience,
+        "projects": candidate.projects,
+        "certifications": candidate.certifications,
+        "resume_filename": candidate.resume_filename,
     }
