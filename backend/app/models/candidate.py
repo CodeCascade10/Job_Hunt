@@ -1,6 +1,7 @@
 
-from sqlalchemy import String
+
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import JSON, String
 
 from app.db.session import Base
 
@@ -20,3 +21,9 @@ class Candidate(Base):
         String(150),
         nullable=True,
     )
+
+    skills: Mapped[list[str]] = mapped_column(
+    JSON,
+    default=list,
+    nullable=False,
+)
