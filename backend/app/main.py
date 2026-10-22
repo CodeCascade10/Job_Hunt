@@ -11,6 +11,7 @@ from app.api.routes.candidates import router as candidates_router
 from app.api.routes.jobs import router as jobs_router
 
 from app.config import settings
+from app.api.routes.applications import router as applications_router
 
 app = FastAPI(
     title=settings.app_name,
@@ -24,6 +25,7 @@ app.include_router(ingestion_router)
 app.include_router(jobs_router)
 
 app.include_router(candidates_router)
+app.include_router(applications_router)
 
 @app.get("/")
 def root() -> dict[str, str]:
