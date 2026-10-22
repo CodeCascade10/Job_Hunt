@@ -11,17 +11,17 @@ SKILL_WEIGHT = 0.40
 
 
 def _normalize_text(text: str | None) -> str:
-    """Normalize text for case-insensitive role comparisons."""
     return (text or "").strip().lower()
 
 
 def _tokenize(text: str) -> set[str]:
-    """Extract meaningful words from a job title or target role."""
     return set(re.findall(r"[a-z0-9+#.]+", text.lower()))
 
 
-def _calculate_role_score(target_role: str, job_title: str) -> float:
-    """Calculate role relevance on a 0-100 scale."""
+def _calculate_role_score(
+    target_role: str,
+    job_title: str,
+) -> float:
     target = _normalize_text(target_role)
     title = _normalize_text(job_title)
 
@@ -44,66 +44,98 @@ def _calculate_role_score(target_role: str, job_title: str) -> float:
         return 0.0
 
     overlap = target_words & job_words
-
     return round(len(overlap) / len(target_words) * 60.0, 2)
 
 
-def _calculate_skill_score(
-    candidate_skills: list[str] | None,
-    job_description: str | None,
-) -> float:
-    """Calculate extracted-skill overlap on a 0-100 scale."""
-    if not candidate_skills or not job_description:
-        return 0.0
+def _candidate_skills(candidate: Candidate) -> set[str]:
+    skills: set[str] = set()
 
-    normalized_candidate_skills = set()
+    for skill in candidate.skills or []:
+        skills.update(extract_skills(skill))
 
-    for skill in candidate_skills:
-        normalized_candidate_skills.update(extract_skills(skill))
-
-    if not normalized_candidate_skills:
-        return 0.0
-
-    job_skills = extract_skills(job_description)
-
-    if not job_skills:
-        return 0.0
-
-    matching_skills = normalized_candidate_skills & job_skills
-
-    return round(
-        len(matching_skills) / len(normalized_candidate_skills) * 100.0,
-        2,
-    )
+    return skills
 
 
-def calculate_match_score(candidate: Candidate, job: Job) -> float:
-    """
-    Combine target-role relevance and extracted-skill relevance.
+def _job_skills(job: Job) -> set[str]:
+    # Include the title because some listings have short descriptions.
+    text = f"{job.title or ''}\n{job.description or ''}"
+    return extract_skills(text)
 
-    Role relevance contributes 60%.
-    Skill relevance contributes 40%.
-    A missing target role or job title results in zero.
-    """
+
+def calculate_match_details(
+    candidate: Candidate,
+    job: Job,
+) -> dict:
+    """Return an explainable score and skill comparison for a candidate."""
     target_role = _normalize_text(candidate.target_role)
     job_title = _normalize_text(job.title)
 
+    role_score = (
+        _calculate_role_score(target_role, job_title)
+        if target_role and job_title
+        else 0.0
+    )
+
+    candidate_skills = _candidate_skills(candidate)
+    job_skills = _job_skills(job)
+
+    matching_skills = sorted(candidate_skills & job_skills)
+    missing_skills = sorted(job_skills - candidate_skills)
+
+    # Measure how many recognized job skills are covered by the profile.
+    skill_score = (
+        round(len(matching_skills) / len(job_skills) * 100.0, 2)
+        if job_skills
+        else 0.0
+    )
+
+    # Preserve the existing behavior: a missing role or title gives zero.
     if not target_role or not job_title:
-        return 0.0
+        match_score = 0.0
+    else:
+        match_score = round(
+            role_score * ROLE_WEIGHT + skill_score * SKILL_WEIGHT,
+            2,
+        )
 
-    role_score = _calculate_role_score(target_role, job_title)
+    
+    if not job_skills:
+        explanation = (
+            "No recognized skills were found in this job listing, "
+            "so skill coverage could not be assessed."
+        )
+    elif matching_skills and missing_skills:
+        explanation = (
+            f"Your profile matches {len(matching_skills)} of "
+            f"{len(job_skills)} recognized job skills. "
+            f"Skills mentioned in the listing but absent from your "
+            f"profile: {', '.join(missing_skills)}."
+        )
+    elif matching_skills:
+        explanation = (
+            f"Your profile contains all {len(job_skills)} "
+            "recognized skills found in this listing."
+        )
+    else:
+        explanation = (
+            f"None of the {len(job_skills)} recognized skills "
+            "found in this listing appear in your profile. "
+            f"Review: {', '.join(missing_skills)}."
+        )
 
-    skill_score = _calculate_skill_score(
-        candidate.skills,
-        job.description,
-    )
 
-    combined_score = (
-        role_score * ROLE_WEIGHT
-        + skill_score * SKILL_WEIGHT
-    )
+    return {
+        "match_score": match_score,
+        "role_score": role_score,
+        "skill_score": skill_score,
+        "matching_skills": matching_skills,
+        "missing_skills": missing_skills,
+        "explanation": explanation,
+    }
 
-    return round(min(100.0, max(0.0, combined_score)), 2)
+
+def calculate_match_score(candidate: Candidate, job: Job) -> float:
+    return calculate_match_details(candidate, job)["match_score"]
 
 
 def rank_jobs_for_candidate(
