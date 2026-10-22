@@ -3,11 +3,10 @@ from app.models.candidate import Candidate
 from app.models.job import Job
 
 
+
 def calculate_match_score(candidate: Candidate, job: Job) -> float:
     """
     Calculate a simple job-title match score from 0 to 100.
-    This first version compares the candidate's target role
-    with the job title.
     """
     if not candidate.target_role or not job.title:
         return 0.0
@@ -27,35 +26,25 @@ def calculate_match_score(candidate: Candidate, job: Job) -> float:
     if job_title in target_role:
         return 70.0
 
-    
-    target_words = set(target_role.split())
-    job_words = set(job_title.split())
-
     generic_words = {
-        "developer",
-        "engineer",
-        "senior",
-        "junior",
-        "lead",
-        "associate",
-        "software",
+        "developer", "engineer", "senior", "junior",
+        "lead", "associate", "software", "the",
+        "and", "of", "for", "entry", "level",
     }
 
-    target_specific = target_words - generic_words
-    job_specific = job_words - generic_words
+    target_words = set(target_role.split()) - generic_words
+    job_words = set(job_title.split()) - generic_words
 
-    if not target_specific:
+    if not target_words:
         return 0.0
 
-    overlap = target_specific.intersection(job_specific)
+    overlap = target_words.intersection(job_words)
 
     if not overlap:
         return 0.0
 
-    score = len(overlap) / len(target_specific) * 60.0
-
+    score = len(overlap) / len(target_words) * 60.0
     return round(min(score, 60.0), 2)
-
 
 
 def rank_jobs_for_candidate(
