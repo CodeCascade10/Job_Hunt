@@ -43,11 +43,54 @@ def _calculate_role_score(
     target_words = _tokenize(target)
     job_words = _tokenize(title)
 
-    if not target_words:
-        return 0.0
+    # Generic words do not establish role relevance by themselves.
+   
+    # Ignore generic seniority and job-family words when
+    # comparing the specific technical specialization.
+    generic_words = {
+        "developer",
+        "engineer",
+        "senior",
+        "junior",
+        "lead",
+        "principal",
+        "staff",
+        "associate",
+        "manager",
+        "specialist",
+        "analyst",
+        "architect",
+    }
 
-    overlap = target_words & job_words
-    return round(len(overlap) / len(target_words) * 60.0, 2)
+    target_specific = target_words - generic_words
+    job_specific = job_words - generic_words
+
+    # Shared specialization is strong evidence of relevance.
+    overlap = target_specific & job_specific
+
+    if overlap and target_specific:
+        return round(
+            len(overlap) / len(target_specific) * 60.0,
+            2,
+        )
+
+    # Allow a related backend role for a Python Developer,
+    # but do not treat generic words as a match on their own.
+    backend_roles = {
+        "python developer",
+        "backend developer",
+        "backend engineer",
+        "software engineer",
+        "software developer",
+    }
+
+    if target in backend_roles and title in backend_roles:
+        return 45.0
+
+    return 0.0
+
+
+    
 
 
 def _candidate_skills(candidate: Candidate) -> set[str]:

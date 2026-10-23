@@ -1,6 +1,13 @@
 
 import pytest
 
+
+from app.services.job_matching import (
+    _calculate_role_score,
+    calculate_match_score,
+    rank_jobs_for_candidate,
+)
+
 from app.models.candidate import Candidate
 from app.models.job import Job
 from app.services.job_matching import (
@@ -32,6 +39,19 @@ def make_job(
         description=description,
     )
 
+class TestCalculateRoleScore:
+    def test_exact_role_match_scores_100(self):
+        assert _calculate_role_score(
+            "Python Developer",
+            "Python Developer",
+        ) == 100.0
+
+    def test_unrelated_role_scores_zero(self):
+        assert _calculate_role_score(
+            "Python Developer",
+            "Account Executive",
+        ) == 0.0
+        
 
 class TestCalculateMatchScore:
     """Tests for role and extracted-skill based job matching."""

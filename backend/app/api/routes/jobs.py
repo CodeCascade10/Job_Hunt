@@ -1,6 +1,7 @@
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 
 from app.db.session import SessionLocal
 from app.models.job import Job
@@ -26,6 +27,28 @@ def get_db():
         yield session
 
 
+def _filter_real_jobs(query):
+    """Exclude known demo and test listings without deleting database rows."""
+    query = query.filter(~Job.company.ilike("leverdemo"))
+    query = query.filter(~Job.title.ilike("%test posting%"))
+
+    demo_markers = [
+        "%fictional job created solely for demonstration purposes%",
+        "%applications submitted to this job will not be reviewed%",
+    ]
+
+    for marker in demo_markers:
+        query = query.filter(
+            or_(
+                Job.description.is_(None),
+                ~Job.description.ilike(marker),
+            )
+        )
+
+    return query
+
+
+
 @router.get("/")
 def search_jobs(
     keyword: str | None = Query(default=None, min_length=1),
@@ -34,7 +57,7 @@ def search_jobs(
     limit: int = Query(default=20, ge=1, le=100),
     session: Session = Depends(get_db),
 ):
-    query = session.query(Job)
+    query = _filter_real_jobs(session.query(Job))
 
     if keyword:
         search_term = f"%{keyword.strip()}%"
@@ -92,12 +115,14 @@ def recommend_jobs(
             detail="Candidate not found",
         )
 
-    jobs = session.query(Job).all()
+    jobs = _filter_real_jobs(session.query(Job)).all()
     ranked = rank_jobs_for_candidate(candidate, jobs)
 
     ranked = [
         item for item in ranked
         if item["match_score"] > 0
+        and item["job"].title
+        and item["job"].company
     ]
     recommendations = []
 
@@ -108,6 +133,10 @@ def recommend_jobs(
         # Do not recommend jobs with no positive match score.
         if details["match_score"] <= 0:
             continue
+
+        if not details["matching_skills"]:
+            continue  # Skip jobs with no matching skills.
+
 
         recommendations.append(
             {
