@@ -29,13 +29,16 @@ SECTION_ALIASES = {
 }
 
 SECTION_STOP_WORDS = (
+    
     r"education|academic background|educational qualifications|"
     r"experience|work experience|professional experience|employment history|"
     r"projects|personal projects|academic projects|"
     r"skills|technical skills|certifications|certificates|"
     r"summary|professional summary|profile|objective|"
-    r"achievements|publications|languages"
+    r"achievements|publications|languages|"
+    r"research & publications|research"
 )
+
 
 
 def _extract_name(text: str) -> str | None:
