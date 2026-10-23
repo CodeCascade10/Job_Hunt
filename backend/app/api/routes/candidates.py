@@ -77,6 +77,41 @@ def create_candidate(
     }
 
 
+
+@router.get("/{candidate_id}")
+def get_candidate(
+    candidate_id: int,
+    session: Session = Depends(get_db),
+):
+    candidate = session.get(Candidate, candidate_id)
+
+    if candidate is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Candidate not found",
+        )
+
+    return {
+        "id": candidate.id,
+        "full_name": candidate.full_name,
+        "email": candidate.email,
+        "phone": candidate.phone,
+        "location": candidate.location,
+        "target_role": candidate.target_role,
+        "preferred_locations": candidate.preferred_locations,
+        "employment_types": candidate.employment_types,
+        "remote_preference": candidate.remote_preference,
+        "skills": candidate.skills or [],
+        "years_experience": candidate.years_experience,
+        "professional_summary": candidate.professional_summary,
+        "education": candidate.education,
+        "experience": candidate.experience,
+        "projects": candidate.projects,
+        "certifications": candidate.certifications,
+        "resume_filename": candidate.resume_filename,
+    }
+
+
 @router.get("/{candidate_id}/matched-jobs")
 def get_matched_jobs(
     candidate_id: int,
