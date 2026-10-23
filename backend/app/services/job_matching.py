@@ -44,7 +44,7 @@ def _calculate_role_score(
     job_words = _tokenize(title)
 
     # Generic words do not establish role relevance by themselves.
-   
+
     # Ignore generic seniority and job-family words when
     # comparing the specific technical specialization.
     generic_words = {
@@ -90,7 +90,7 @@ def _calculate_role_score(
     return 0.0
 
 
-    
+
 
 
 def _candidate_skills(candidate: Candidate) -> set[str]:
@@ -153,7 +153,7 @@ def calculate_match_details(
     if match_score < MIN_MATCH_SCORE:
         match_score = 0.0
 
-    
+
     if not job_skills:
         explanation = (
             "No recognized skills were found in this job listing, "

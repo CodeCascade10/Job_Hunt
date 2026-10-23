@@ -51,7 +51,7 @@ class TestCalculateRoleScore:
             "Python Developer",
             "Account Executive",
         ) == 0.0
-        
+
 
 class TestCalculateMatchScore:
     """Tests for role and extracted-skill based job matching."""
