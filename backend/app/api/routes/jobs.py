@@ -95,6 +95,10 @@ def recommend_jobs(
     jobs = session.query(Job).all()
     ranked = rank_jobs_for_candidate(candidate, jobs)
 
+    ranked = [
+        item for item in ranked
+        if item["match_score"] > 0
+    ]
     recommendations = []
 
     for item in ranked:

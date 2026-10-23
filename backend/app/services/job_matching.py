@@ -9,6 +9,9 @@ from app.services.skill_extractor import extract_skills
 ROLE_WEIGHT = 0.60
 SKILL_WEIGHT = 0.40
 
+MIN_ROLE_SCORE = 30.0
+MIN_MATCH_SCORE = 25.0
+
 
 def _normalize_text(text: str | None) -> str:
     return (text or "").strip().lower()
@@ -90,13 +93,22 @@ def calculate_match_details(
     )
 
     # Preserve the existing behavior: a missing role or title gives zero.
+    # Jobs without a target role or job title cannot be recommended.
     if not target_role or not job_title:
         match_score = 0.0
+
+    # A strong skill overlap must not compensate for an unrelated role.
+    elif role_score < MIN_ROLE_SCORE:
+        match_score = 0.0
+
     else:
         match_score = round(
             role_score * ROLE_WEIGHT + skill_score * SKILL_WEIGHT,
             2,
         )
+
+    if match_score < MIN_MATCH_SCORE:
+        match_score = 0.0
 
     
     if not job_skills:
@@ -142,7 +154,7 @@ def rank_jobs_for_candidate(
     candidate: Candidate,
     jobs: list[Job],
 ) -> list[dict]:
-    """Rank jobs from highest to lowest combined match score."""
+    """Rank every job from highest to lowest combined match score."""
     ranked_jobs = [
         {
             "job": job,
