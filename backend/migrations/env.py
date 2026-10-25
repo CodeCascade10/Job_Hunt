@@ -8,6 +8,9 @@ from alembic import context
 from sqlalchemy import create_engine
 from app.config import settings
 
+
+from app.models.application import Application
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
