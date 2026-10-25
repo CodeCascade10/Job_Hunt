@@ -199,6 +199,53 @@ function App() {
       }
     }
 
+
+  async function updateCandidate(event: React.FormEvent<HTMLFormElement>) {
+  event.preventDefault();
+
+  if (!candidate) {
+    setError("Load a candidate before editing their profile.");
+    return;
+  }
+
+  setError("");
+  setMessage("");
+  setSavingCandidate(true);
+
+  try {
+    const response = await api.patch(
+      `/candidates/${candidate.id}/profile`,
+      {
+        full_name: fullName.trim(),
+        email: email.trim(),
+        target_role: targetRole.trim() || null,
+      },
+    );
+
+    const updatedCandidate = response.data as Candidate;
+    setCandidate(updatedCandidate);
+
+    const skills = skillsInput
+      .split(",")
+      .map((skill) => skill.trim())
+      .filter(Boolean);
+
+    await api.patch(`/candidates/${candidate.id}/skills`, { skills });
+
+    const refreshed = await api.get(`/candidates/${candidate.id}`);
+    setCandidate(refreshed.data);
+
+    setMessage("Profile updated successfully.");
+    alert(`Profile updated successfully!\nCandidate ID: ${candidate.id}`);
+
+    await loadCandidateAndRecommendations();
+  } catch (err) {
+    setError(`Could not update profile: ${getErrorMessage(err)}`);
+  } finally {
+    setSavingCandidate(false);
+  }
+}
+
   return (
     <main className="app">
       <header>
@@ -221,7 +268,8 @@ function App() {
             <section>
         <h2>Create candidate</h2>
 
-        <form onSubmit={createCandidate}>
+        <form 
+         onSubmit={candidate ? updateCandidate : createCandidate}>
           <label htmlFor="fullName">Full name</label>
           <input
             id="fullName"
@@ -260,7 +308,11 @@ function App() {
           />
 
           <button type="submit" disabled={savingCandidate}>
-            {savingCandidate ? "Creating..." : "Create candidate"}
+            {savingCandidate
+              ? "Saving..."
+              : candidate
+                ? "Update profile"
+                : "Create candidate"}
           </button>
         </form>
       </section>
@@ -323,6 +375,19 @@ function App() {
             <p>{candidate.email}</p>
             <p>Target role: {candidate.target_role || "Not specified"}</p>
             <p>Skills: {candidate.skills?.join(", ") || "No skills listed"}</p>
+
+            <button
+              type="button"
+              onClick={() => {
+                setFullName(candidate.full_name);
+                setEmail(candidate.email);
+                setTargetRole(candidate.target_role || "");
+                setSkillsInput(candidate.skills?.join(", ") || "");
+                setMessage("Profile loaded into the form for editing.");
+              }}
+            >
+              Edit profile
+            </button>
           </article>
         )}
 
