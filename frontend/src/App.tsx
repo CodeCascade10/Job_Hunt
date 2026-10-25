@@ -184,15 +184,20 @@ function App() {
     setEmail("");
     setTargetRole("");
     setSkillsInput("");
-    setMessage(`Candidate created successfully. ID: ${createdCandidate.id}`);
+
+    alert(
+      `Profile created successfully!\nCandidate: ${createdCandidate.full_name}\nCandidate ID: ${createdCandidate.id}`,
+    );
+
+    setMessage(`Profile created successfully. Candidate ID: ${createdCandidate.id}`);
 
     await loadJobs();
-  } catch (err) {
-    setError(`Could not create candidate: ${getErrorMessage(err)}`);
-  } finally {
-    setSavingCandidate(false);
-  }
-}
+      } catch (err) {
+        setError(`Could not create candidate: ${getErrorMessage(err)}`);
+      } finally {
+        setSavingCandidate(false);
+      }
+    }
 
   return (
     <main className="app">
@@ -212,6 +217,53 @@ function App() {
           {message}
         </p>
       )}
+
+            <section>
+        <h2>Create candidate</h2>
+
+        <form onSubmit={createCandidate}>
+          <label htmlFor="fullName">Full name</label>
+          <input
+            id="fullName"
+            value={fullName}
+            onChange={(event) => setFullName(event.target.value)}
+            required
+            maxLength={150}
+            placeholder="Enter full name"
+          />
+
+          <label htmlFor="email">Email</label>
+          <input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            required
+            placeholder="Enter email address"
+          />
+
+          <label htmlFor="targetRole">Target role</label>
+          <input
+            id="targetRole"
+            value={targetRole}
+            onChange={(event) => setTargetRole(event.target.value)}
+            maxLength={150}
+            placeholder="e.g. Python Developer"
+          />
+
+          <label htmlFor="skillsInput">Skills (comma-separated)</label>
+          <input
+            id="skillsInput"
+            value={skillsInput}
+            onChange={(event) => setSkillsInput(event.target.value)}
+            placeholder="Python, FastAPI, SQL, Docker"
+          />
+
+          <button type="submit" disabled={savingCandidate}>
+            {savingCandidate ? "Creating..." : "Create candidate"}
+          </button>
+        </form>
+      </section>
 
       <section>
         <h2>Job listings</h2>
