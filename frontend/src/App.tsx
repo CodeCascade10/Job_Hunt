@@ -53,6 +53,58 @@ function App() {
   const [loadingCandidate, setLoadingCandidate] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [targetRole, setTargetRole] = useState("");
+  const [skillsInput, setSkillsInput] = useState("");
+  const [savingCandidate, setSavingCandidate] = useState(false);
+
+
+
+  <section>
+  <h2>Create candidate</h2>
+
+  <form onSubmit={createCandidate}>
+    <label htmlFor="fullName">Full name</label>
+    <input
+      id="fullName"
+      value={fullName}
+      onChange={(event) => setFullName(event.target.value)}
+      required
+      maxLength={150}
+    />
+
+    <label htmlFor="email">Email</label>
+    <input
+      id="email"
+      type="email"
+      value={email}
+      onChange={(event) => setEmail(event.target.value)}
+      required
+    />
+
+    <label htmlFor="targetRole">Target role</label>
+    <input
+      id="targetRole"
+      value={targetRole}
+      onChange={(event) => setTargetRole(event.target.value)}
+      placeholder="e.g. Python Developer"
+      maxLength={150}
+    />
+
+    <label htmlFor="skills">Skills (comma-separated)</label>
+    <input
+      id="skills"
+      value={skillsInput}
+      onChange={(event) => setSkillsInput(event.target.value)}
+      placeholder="Python, FastAPI, SQL, Docker"
+    />
+
+    <button type="submit" disabled={savingCandidate}>
+      {savingCandidate ? "Creating..." : "Create candidate"}
+    </button>
+  </form>
+</section>
 
   async function loadJobs() {
     setLoadingJobs(true);
@@ -106,6 +158,41 @@ function App() {
       setLoadingCandidate(false);
     }
   }
+
+  async function createCandidate(event: React.FormEvent<HTMLFormElement>) {
+  event.preventDefault();
+  setError("");
+  setMessage("");
+  setSavingCandidate(true);
+
+  try {
+    const response = await api.post("/candidates/", {
+      full_name: fullName.trim(),
+      email: email.trim(),
+      target_role: targetRole.trim() || null,
+      skills: skillsInput
+        .split(",")
+        .map((skill) => skill.trim())
+        .filter(Boolean),
+    });
+
+    const createdCandidate = response.data as Candidate;
+
+    setCandidate(createdCandidate);
+    setCandidateId(String(createdCandidate.id));
+    setFullName("");
+    setEmail("");
+    setTargetRole("");
+    setSkillsInput("");
+    setMessage(`Candidate created successfully. ID: ${createdCandidate.id}`);
+
+    await loadJobs();
+  } catch (err) {
+    setError(`Could not create candidate: ${getErrorMessage(err)}`);
+  } finally {
+    setSavingCandidate(false);
+  }
+}
 
   return (
     <main className="app">
